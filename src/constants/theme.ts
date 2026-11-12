@@ -17,6 +17,9 @@ export const Colors = {
     line: '#e4e4e6',
     card: '#F0F0F1',
     background: '#ffffff',
+    danger: '#b3261e',
+    warn: '#8a5a00',
+    warnSoft: '#fbf1dc',
   },
   dark: {
     green: '#1fb072',
@@ -28,6 +31,9 @@ export const Colors = {
     line: '#2f312f',
     card: '#232523',
     background: '#181918',
+    danger: '#f2867e',
+    warn: '#e8b85c',
+    warnSoft: '#3a2f17',
   },
 } as const;
 

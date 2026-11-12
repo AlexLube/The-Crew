@@ -36,10 +36,16 @@ function MessagesButton() {
 
 const tabs: { name: string; title: string; icon: IconName; iconActive: IconName }[] = [
   { name: 'index', title: 'Inicio', icon: 'home-outline', iconActive: 'home' },
-  { name: 'escuela', title: 'Escuela', icon: 'school-outline', iconActive: 'school' },
+  { name: 'catalogo', title: 'Catálogo', icon: 'shirt-outline', iconActive: 'shirt' },
+  { name: 'pedidos', title: 'Pedidos', icon: 'cube-outline', iconActive: 'cube' },
   { name: 'tablon', title: 'Tablón', icon: 'newspaper-outline', iconActive: 'newspaper' },
-  { name: 'crew', title: 'The Crew', icon: 'people-outline', iconActive: 'people' },
   { name: 'taller', title: 'Mi taller', icon: 'construct-outline', iconActive: 'construct' },
+];
+
+/** Siguen disponibles desde Inicio, pero fuera de la barra para dejar sitio a catálogo y pedidos. */
+const ocultas = [
+  { name: 'escuela', title: 'Escuela' },
+  { name: 'crew', title: 'The Crew' },
 ];
 
 export default function TabLayout() {
@@ -68,6 +74,9 @@ export default function TabLayout() {
             ),
           }}
         />
+      ))}
+      {ocultas.map((t) => (
+        <Tabs.Screen key={t.name} name={t.name} options={{ title: t.title, href: null }} />
       ))}
     </Tabs>
   );

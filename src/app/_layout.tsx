@@ -15,7 +15,9 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 
-import { Colors, Fonts } from '@/constants/theme';
+import { Colors, Fonts, usePalette } from '@/constants/theme';
+import { AuthProvider, useAuth } from '@/state/auth';
+import { CarritoProvider } from '@/state/carrito';
 import { CrewProvider } from '@/state/crew-store';
 
 SplashScreen.preventAutoHideAsync();
@@ -32,10 +34,6 @@ export default function RootLayout() {
     BarlowCondensed_800ExtraBold,
   });
 
-  useEffect(() => {
-    if (loaded || error) SplashScreen.hideAsync();
-  }, [loaded, error]);
-
   if (!loaded && !error) return null;
 
   const base = scheme === 'dark' ? DarkTheme : DefaultTheme;
@@ -46,21 +44,57 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={theme}>
-      <CrewProvider>
-        <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
-        <Stack
-          screenOptions={{
-            headerTintColor: c.ink,
-            headerTitleStyle: { fontFamily: Fonts.displayBold, fontSize: 20 },
-            headerShadowVisible: false,
-            headerBackButtonDisplayMode: 'minimal',
-          }}>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="curso/[id]" options={{ title: 'Escuela' }} />
-          <Stack.Screen name="campana/[id]" options={{ title: 'Campaña' }} />
-          <Stack.Screen name="mensajes" options={{ title: 'Mensajes' }} />
-        </Stack>
-      </CrewProvider>
+      <AuthProvider>
+        <CrewProvider>
+          <CarritoProvider>
+            <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
+            <Rutas fuentesListas={loaded || !!error} />
+          </CarritoProvider>
+        </CrewProvider>
+      </AuthProvider>
     </ThemeProvider>
+  );
+}
+
+/**
+ * Cada rol ve solo sus pantallas: sin sesión, la de acceso; el maker,
+ * su panel (las pestañas de siempre más catálogo y pedidos); marketing
+ * y almacén, el panel de gestión.
+ */
+function Rutas({ fuentesListas }: { fuentesListas: boolean }) {
+  const c = usePalette();
+  const { usuario, iniciando } = useAuth();
+
+  useEffect(() => {
+    if (fuentesListas && !iniciando) SplashScreen.hideAsync();
+  }, [fuentesListas, iniciando]);
+
+  if (iniciando) return null;
+  const esMaker = usuario?.rol === 'maker';
+  const esStaff = usuario?.rol === 'marketing' || usuario?.rol === 'almacen';
+
+  return (
+    <Stack
+      screenOptions={{
+        headerTintColor: c.ink,
+        headerTitleStyle: { fontFamily: Fonts.displayBold, fontSize: 20 },
+        headerShadowVisible: false,
+        headerBackButtonDisplayMode: 'minimal',
+      }}>
+      <Stack.Protected guard={!usuario}>
+        <Stack.Screen name="login" options={{ headerShown: false }} />
+      </Stack.Protected>
+      <Stack.Protected guard={esMaker}>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="curso/[id]" options={{ title: 'Escuela' }} />
+        <Stack.Screen name="campana/[id]" options={{ title: 'Campaña' }} />
+        <Stack.Screen name="mensajes" options={{ title: 'Mensajes' }} />
+        <Stack.Screen name="pedido/[id]" options={{ title: 'Pedido' }} />
+        <Stack.Screen name="pedido/revisar" options={{ title: 'Tu solicitud' }} />
+      </Stack.Protected>
+      <Stack.Protected guard={esStaff}>
+        <Stack.Screen name="admin" options={{ headerShown: false }} />
+      </Stack.Protected>
+    </Stack>
   );
 }

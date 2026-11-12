@@ -1,33 +1,38 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { Image, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { Body, Button, Card, Muted, Photo, PhotoTitle, Pill, Screen } from '@/components/ui';
 import { Fonts, OficioTint, usePalette } from '@/constants/theme';
-import { campanas, cursos, equipacion, yo } from '@/data/ejemplo';
+import { DireccionForm } from '@/components/direccion-form';
+import { campanas, cursos } from '@/data/ejemplo';
+import { ETIQUETA_PERFIL } from '@/lib/api';
+import { useAuth, useYo } from '@/state/auth';
 import { porcentaje, useCrew } from '@/state/crew-store';
 
 const secciones = [
   ['historia', 'Historia'],
   ['galeria', 'Galería'],
-  ['equipacion', 'Equipación'],
   ['insignias', 'Insignias'],
+  ['datos', 'Mis datos'],
 ] as const;
 type Seccion = (typeof secciones)[number][0];
 
 export default function MiTaller() {
   const c = usePalette();
   const [sec, setSec] = useState<Seccion>('historia');
+  const yo = useYo();
+  const k = tintDeOficio(yo.oficio);
+  const sub = [yo.instagram, yo.taller].filter(Boolean).join(' · ');
 
   return (
     <Screen
       flush={
-        <Photo k={yo.k} label="Foto en el taller" style={{ borderRadius: 0, minHeight: 240 }}>
-          <Pill solid>{yo.oficio}</Pill>
+        <Photo k={k} label="Foto en el taller" style={{ borderRadius: 0, minHeight: 240 }}>
+          <Pill solid>{yo.oficio ?? (yo.perfil ? ETIQUETA_PERFIL[yo.perfil] : 'The Crew')}</Pill>
           <PhotoTitle>{yo.nombre}</PhotoTitle>
-          <Text style={styles.photoSub}>
-            {yo.handle} · {yo.taller}
-          </Text>
+          {sub ? <Text style={styles.photoSub}>{sub}</Text> : null}
         </Photo>
       }>
       <View style={[styles.tabs, { borderBottomColor: c.line }]} accessibilityRole="tablist">
@@ -44,8 +49,8 @@ export default function MiTaller() {
       </View>
       {sec === 'historia' && <Historia />}
       {sec === 'galeria' && <Galeria />}
-      {sec === 'equipacion' && <Equipacion />}
       {sec === 'insignias' && <Insignias />}
+      {sec === 'datos' && <MisDatos />}
     </Screen>
   );
 }
@@ -55,7 +60,7 @@ function Historia() {
   const { publicarEnWeb, alternarPublicar } = useCrew();
   return (
     <View style={{ gap: 16 }}>
-      <Text style={[styles.quote, { color: c.green }]}>«{yo.frase}»</Text>
+      <Text style={[styles.quote, { color: c.green }]}>«Para mí los retos son posibilidades.»</Text>
       <Muted>
         Aquí va la historia del worker en primera persona, la misma que tiene en su perfil de thecrew.issaline.com. La edita
         él desde la app.
@@ -107,22 +112,43 @@ function Galeria() {
   );
 }
 
-function Equipacion() {
-  const c = usePalette();
+function MisDatos() {
+  const yo = useYo();
+  const { actualizar, salir } = useAuth();
+  const [guardado, setGuardado] = useState(false);
   return (
-    <View style={{ gap: 10 }}>
-      {equipacion.map((e) => (
-        <Card key={e.prenda} style={styles.row}>
-          <Ionicons name="cube-outline" size={26} color={c.ink} />
-          <View style={{ flex: 1 }}>
-            <Body style={{ fontFamily: Fonts.bodyBold }}>{e.prenda}</Body>
-            <Muted>{e.estado}</Muted>
-          </View>
-        </Card>
-      ))}
-      <Button variant="ghost">Pedir prenda o reposición</Button>
+    <View style={{ gap: 16 }}>
+      <Card style={{ gap: 4 }}>
+        <Body style={{ fontFamily: Fonts.bodyBold }}>{yo.nombre}</Body>
+        <Muted>{yo.email}</Muted>
+        {yo.perfil ? <Muted>{ETIQUETA_PERFIL[yo.perfil]}</Muted> : null}
+      </Card>
+      <Muted>Aquí enviamos tus pedidos. Si cambias de dirección, actualízala antes de pedir.</Muted>
+      <DireccionForm
+        usuario={yo}
+        onGuardado={(u) => {
+          actualizar(u);
+          setGuardado(true);
+        }}
+      />
+      {guardado ? <Muted>Guardado.</Muted> : null}
+      <Button variant="ghost" onPress={() => router.push('/catalogo')}>
+        Pedir prenda o reposición
+      </Button>
+      <Button variant="ghost" onPress={salir}>
+        Cerrar sesión
+      </Button>
     </View>
   );
+}
+
+/** Tono del hueco de foto según el oficio. */
+function tintDeOficio(oficio: string | null) {
+  const k = (oficio ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  return k in OficioTint ? k : 'marca';
 }
 
 function Insignias() {
@@ -154,7 +180,7 @@ function Insignias() {
 
 const styles = StyleSheet.create({
   photoSub: { color: 'rgba(255,255,255,0.9)', fontFamily: Fonts.body, fontSize: 13 },
-  tabs: { flexDirection: 'row', gap: 18, borderBottomWidth: StyleSheet.hairlineWidth, marginTop: -6 },
+  tabs: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 18, borderBottomWidth: StyleSheet.hairlineWidth, marginTop: -6 },
   tab: { paddingVertical: 10, borderBottomWidth: 2 },
   tabText: { fontFamily: Fonts.bodyBold, fontSize: 14 },
   quote: { fontFamily: Fonts.displaySemi, fontSize: 24, lineHeight: 28, fontStyle: 'italic' },
