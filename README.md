@@ -81,6 +81,12 @@ cd server && npm install && npm start   # sirve la API en /api y la web en el mi
 
 Variables mínimas en producción: `DB_PATH` (en un volumen persistente), `ADMIN_EMAIL` y `ADMIN_PASSWORD` (primer usuario de marketing), `EMAIL_MARKETING`, `EMAIL_ALMACEN` y los datos `SMTP_*`. Las apps de móvil se generan con EAS apuntando a la API con `EXPO_PUBLIC_API_URL`.
 
+### Demo en Netlify
+
+`netlify.toml` publica una **versión de demostración** que funciona entera en el navegador, sin servidor (`EXPO_PUBLIC_DEMO=1`, ver `src/lib/demo-api.ts`). Usa los mismos datos de ejemplo y reglas que la API. En la pantalla de acceso se entra con un clic como marketing, embajador, Singular Worker o maker de evento. Cada navegador guarda su propia copia de los datos, así que no se comparten entre personas y no se envían emails.
+
+Para publicarla: en Netlify, *Add new site → Import from GitHub*, eliges este repositorio y Netlify toma la configuración de `netlify.toml`.
+
 ## Estructura
 
 ```

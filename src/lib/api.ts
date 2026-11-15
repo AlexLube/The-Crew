@@ -1,5 +1,10 @@
 import { Platform } from 'react-native';
 
+import { demoApi } from './demo-api';
+
+/** Versión de demostración: todo funciona en el navegador, sin servidor. */
+export const DEMO = process.env.EXPO_PUBLIC_DEMO === '1';
+
 /**
  * Dirección de la API. En web publicada, la propia API sirve la app y
  * se usa el mismo dominio. En desarrollo, localhost:4000 o lo que diga
@@ -100,6 +105,14 @@ export function configurarApi(token: string | null, onCaducada?: () => void) {
 }
 
 export async function api<T>(ruta: string, opciones: { metodo?: string; cuerpo?: unknown } = {}): Promise<T> {
+  if (DEMO) {
+    const r = await demoApi(ruta, opciones.metodo ?? (opciones.cuerpo ? 'POST' : 'GET'), opciones.cuerpo, tokenActual);
+    if (!r.ok) {
+      if (r.status === 401 && tokenActual) alCaducar?.();
+      throw new ErrorApi(r.status, r.datos.error);
+    }
+    return r.datos as T;
+  }
   let res: Response;
   try {
     res = await fetch(`${API_URL}/api${ruta}`, {

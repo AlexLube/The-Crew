@@ -1,10 +1,19 @@
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { Aviso, Campo } from '@/components/pedidos';
-import { Button, Muted } from '@/components/ui';
+import { Aviso, Campo, Enlace } from '@/components/pedidos';
+import { Body, Button, Card, Chip, Muted } from '@/components/ui';
 import { Fonts, usePalette } from '@/constants/theme';
+import { DEMO } from '@/lib/api';
+import { PASSWORD_DEMO, reiniciarDemo } from '@/lib/demo-api';
 import { useAuth } from '@/state/auth';
+
+const CUENTAS_DEMO = [
+  ['Marketing', 'marketing@issaline.com'],
+  ['Embajador', 'josema@ejemplo.com'],
+  ['Singular Worker', 'joel@ejemplo.com'],
+  ['Maker de evento', 'alvaro@ejemplo.com'],
+] as const;
 
 export default function Login() {
   const c = usePalette();
@@ -14,12 +23,14 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
 
-  async function enviar() {
-    if (!email.trim() || !password) return setError('Escribe tu email y tu contraseña.');
+  async function enviar(cuenta?: string) {
+    const e = cuenta ?? email.trim();
+    const pw = cuenta ? PASSWORD_DEMO : password;
+    if (!e || !pw) return setError('Escribe tu email y tu contraseña.');
     setEnviando(true);
     setError(null);
     try {
-      await entrar(email.trim(), password);
+      await entrar(e, pw);
     } catch (e) {
       setError((e as Error).message);
       setEnviando(false);
@@ -52,12 +63,32 @@ export default function Login() {
             secureTextEntry
             autoComplete="current-password"
             textContentType="password"
-            onSubmitEditing={enviar}
+            onSubmitEditing={() => enviar()}
           />
           {error ? <Aviso>{error}</Aviso> : null}
-          <Button onPress={enviar} disabled={enviando}>
+          <Button onPress={() => enviar()} disabled={enviando}>
             {enviando ? 'Entrando…' : 'Entrar'}
           </Button>
+          {DEMO ? (
+            <Card style={{ gap: 10 }}>
+              <Body style={{ fontFamily: Fonts.bodyBold }}>Versión de demostración</Body>
+              <Muted>Entra con un clic como cualquiera de estos perfiles. Los datos son de ejemplo y se guardan solo en este navegador.</Muted>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {CUENTAS_DEMO.map(([t, e]) => (
+                  <Chip key={e} onPress={() => enviar(e)}>
+                    {t}
+                  </Chip>
+                ))}
+              </View>
+              <Enlace
+                onPress={() => {
+                  reiniciarDemo();
+                  setError(null);
+                }}>
+                Volver a los datos del principio
+              </Enlace>
+            </Card>
+          ) : null}
           <Muted style={{ textAlign: 'center' }}>¿No tienes cuenta o la has olvidado? Escribe a marketing de Issaline.</Muted>
         </View>
       </ScrollView>
