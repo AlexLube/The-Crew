@@ -15,7 +15,10 @@ export function crearCorreo(db, env = process.env) {
       })
     : null;
   const de = env.EMAIL_FROM ?? 'The Crew <thecrew@issaline.com>';
-  const registrar = db.prepare('INSERT INTO emails (para, asunto, texto, pedido_id, estado, error) VALUES (?, ?, ?, ?, ?, ?)');
+  const registrar = (...v) =>
+    db
+      .query('INSERT INTO emails (para, asunto, texto, pedido_id, estado, error) VALUES ($1, $2, $3, $4, $5, $6)', v)
+      .catch((e) => console.error('[email] no se pudo registrar', e));
 
   return {
     destinos: {
@@ -27,15 +30,15 @@ export function crearCorreo(db, env = process.env) {
       const lista = [para].flat().filter(Boolean).join(', ');
       if (!lista) return;
       if (!transporte) {
-        registrar.run(lista, asunto, texto, pedidoId, 'solo_registro', null);
+        await registrar(lista, asunto, texto, pedidoId, 'solo_registro', null);
         if (env.NODE_ENV !== 'test') console.log(`[email] ${lista} · ${asunto}`);
         return;
       }
       try {
         await transporte.sendMail({ from: de, to: lista, subject: asunto, text: texto });
-        registrar.run(lista, asunto, texto, pedidoId, 'enviado', null);
+        await registrar(lista, asunto, texto, pedidoId, 'enviado', null);
       } catch (e) {
-        registrar.run(lista, asunto, texto, pedidoId, 'error', String(e?.message ?? e));
+        await registrar(lista, asunto, texto, pedidoId, 'error', String(e?.message ?? e));
         console.error('[email] error', e);
       }
     },

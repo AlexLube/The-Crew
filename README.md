@@ -34,7 +34,7 @@ Inicio, Tablón, Escuela, The Crew y mensajes siguen con datos de ejemplo (`src/
 
 ## Arrancar en local
 
-Hacen falta Node 22.13 o superior.
+Hace falta Node 20 o superior.
 
 ```bash
 # 1. API (puerto 4000) con datos de ejemplo
@@ -64,33 +64,47 @@ Pruebas de la API: `cd server && npm test`.
 
 ## Backend
 
-`server/` es una API pequeña en **Node + Express con SQLite** (el `node:sqlite` que trae Node, sin dependencias nativas).
+`server/` es una API pequeña en **Node + Express con PostgreSQL**.
 
-Por qué: para un equipo de marketing y unos cientos de makers no hace falta más. Es un único proceso con un único fichero de base de datos, fácil de copiar y de mover, sin servicios externos que pagar ni configurar, y se despliega en cualquier hosting con Node y un disco persistente (Railway, Render, Fly.io, un VPS). Si algún día se queda corto, el esquema SQL pasa a PostgreSQL casi tal cual.
-
+- En producción usa la base de datos de `NETLIFY_DATABASE_URL` (Netlify DB, que es Neon) o `DATABASE_URL` (cualquier Postgres: Neon, Supabase, Render...).
+- En local y en las pruebas, sin URL, usa **PGlite**: un Postgres completo que corre dentro de Node, así que no hay que instalar nada. Guarda los datos en `server/data/pglite`.
 - Sesiones con token (las contraseñas se guardan con scrypt). El token se guarda en el llavero del móvil (`expo-secure-store`) o en el navegador.
 - Emails por SMTP (`nodemailer`). Sin `SMTP_HOST`, los emails solo se guardan en la tabla `emails` y se muestran en consola.
 - Configuración en `server/.env.example`.
 
-### Publicar
+## Publicar en Netlify
+
+`netlify.toml` publica la web y la API juntas: la web exportada en `dist/` y la API como función de Netlify (`netlify/functions/api.mjs`) en `/api/*`.
+
+1. En Netlify: *Add new site → Import an existing project → GitHub* y eliges este repositorio.
+2. Crea la base de datos: en el panel del sitio, *Extensions → Neon* (Netlify DB), o con `npx netlify db init`. Netlify añade sola la variable `NETLIFY_DATABASE_URL`. Las tablas se crean solas al primer uso.
+3. En *Site configuration → Environment variables* añade:
+   - `ADMIN_EMAIL` y `ADMIN_PASSWORD`: el primer usuario de marketing. Con él se dan de alta los demás.
+   - `EMAIL_MARKETING`, `EMAIL_ALMACEN` y `EMAIL_FROM`: a quién llegan los avisos y desde qué dirección salen.
+   - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER` y `SMTP_PASS`: el servidor de correo (el de Issaline, o un servicio como Brevo o Resend con SMTP).
+   - Opcional: `DATOS_EJEMPLO=1` para cargar los makers, el catálogo y los pedidos de ejemplo si la base está vacía.
+4. *Deploys → Trigger deploy*.
+
+Las apps de móvil se generan con EAS apuntando a la API con `EXPO_PUBLIC_API_URL=https://<tu-sitio>.netlify.app`.
+
+### Demo sin servidor
+
+Con `EXPO_PUBLIC_DEMO=1` en las variables de entorno del sitio, la web funciona entera en el navegador, sin API ni base de datos (`src/lib/demo-api.ts`). Usa los mismos datos de ejemplo y reglas, y en la pantalla de acceso se entra con un clic como cada perfil. Cada navegador guarda su propia copia de los datos y no se envían emails. Sirve para enseñar la app: si quieres tenerla aparte de la versión real, crea un segundo sitio de Netlify desde el mismo repositorio con esa variable.
+
+### Otro hosting
+
+También funciona como un servidor Node normal, que sirve la API y la web en el mismo dominio:
 
 ```bash
-npx expo export -p web          # genera dist/
-cd server && npm install && npm start   # sirve la API en /api y la web en el mismo dominio
+npx expo export -p web
+cd server && npm install && DATABASE_URL=postgres://... npm start
 ```
-
-Variables mínimas en producción: `DB_PATH` (en un volumen persistente), `ADMIN_EMAIL` y `ADMIN_PASSWORD` (primer usuario de marketing), `EMAIL_MARKETING`, `EMAIL_ALMACEN` y los datos `SMTP_*`. Las apps de móvil se generan con EAS apuntando a la API con `EXPO_PUBLIC_API_URL`.
-
-### Demo en Netlify
-
-`netlify.toml` publica una **versión de demostración** que funciona entera en el navegador, sin servidor (`EXPO_PUBLIC_DEMO=1`, ver `src/lib/demo-api.ts`). Usa los mismos datos de ejemplo y reglas que la API. En la pantalla de acceso se entra con un clic como marketing, embajador, Singular Worker o maker de evento. Cada navegador guarda su propia copia de los datos, así que no se comparten entre personas y no se envían emails.
-
-Para publicarla: en Netlify, *Add new site → Import from GitHub*, eliges este repositorio y Netlify toma la configuración de `netlify.toml`.
 
 ## Estructura
 
 ```
-server/             API: src/app.js (rutas), db.js (esquema), seed.js (datos de prueba)
+server/             API: src/app.js (rutas), db.js (esquema), seed.js (datos de prueba), netlify.js (función)
+netlify/functions/  la API publicada como función de Netlify
 src/
   app/              rutas (Expo Router)
     login.tsx       acceso
