@@ -1,0 +1,15 @@
+# Demo de The Crew en Netlify: la web funciona entera en el navegador,
+# con datos de ejemplo y sin servidor (ver src/lib/demo-api.ts).
+[build]
+  command = "npx expo export -p web"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+  EXPO_PUBLIC_DEMO = "1"
+
+# La app es de una sola página: cualquier ruta abre index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
