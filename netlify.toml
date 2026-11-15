@@ -1,14 +1,30 @@
-# Demo de The Crew en Netlify: la web funciona entera en el navegador,
-# con datos de ejemplo y sin servidor (ver src/lib/demo-api.ts).
+# The Crew en Netlify: la web (Expo) y la API como función, con Postgres.
+#
+# - La web se exporta a dist/.
+# - La API (server/) corre en netlify/functions/api.mjs y responde en /api/*.
+# - La base de datos es Netlify DB (Neon): Netlify da NETLIFY_DATABASE_URL.
+#
+# Para publicar solo la demo sin servidor, añade EXPO_PUBLIC_DEMO=1 en las
+# variables de entorno del sitio (ver README).
 [build]
-  command = "npx expo export -p web"
+  command = "npm --prefix server ci && npx expo export -p web"
   publish = "dist"
 
 [build.environment]
   NODE_VERSION = "22"
-  EXPO_PUBLIC_DEMO = "1"
 
-# La app es de una sola página: cualquier ruta abre index.html
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+  # Solo se usan en local (Postgres embebido) o son opcionales de pg
+  external_node_modules = ["@electric-sql/pglite", "pg-native"]
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+
+# La app es de una sola página: cualquier otra ruta abre index.html
 [[redirects]]
   from = "/*"
   to = "/index.html"

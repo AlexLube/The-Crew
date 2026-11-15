@@ -10,13 +10,16 @@ let base;
 let db;
 
 before(async () => {
-  db = abrirDB(':memory:');
-  sembrar(db);
+  db = await abrirDB({ url: process.env.TEST_DATABASE_URL ?? null, ruta: ':memory:' });
+  await sembrar(db);
   const app = crearApp({ db, env: { NODE_ENV: 'test', EMAIL_ALMACEN: 'almacen@test', EMAIL_MARKETING: 'mkt@test' } });
   await new Promise((r) => (servidor = app.listen(0, r)));
   base = `http://localhost:${servidor.address().port}/api`;
 });
-after(() => servidor.close());
+after(async () => {
+  servidor.close();
+  await db.cerrar();
+});
 
 async function api(ruta, { token, metodo = 'GET', cuerpo } = {}) {
   const res = await fetch(base + ruta, {
@@ -27,7 +30,7 @@ async function api(ruta, { token, metodo = 'GET', cuerpo } = {}) {
   return { status: res.status, datos: await res.json() };
 }
 const entrar = async (email) => (await api('/auth/login', { metodo: 'POST', cuerpo: { email, password: 'thecrew2026' } })).datos.token;
-const emails = () => db.prepare('SELECT para, asunto FROM emails ORDER BY id').all();
+const emails = () => db.todos('SELECT para, asunto FROM emails ORDER BY id');
 
 describe('acceso y roles', () => {
   test('contraseña incorrecta', async () => {
@@ -62,7 +65,7 @@ describe('flujo de pedido', () => {
     assert.equal(nuevo.datos.estado, 'pendiente');
     assert.match(nuevo.datos.codigo, /^TC-\d{4}-\d{4}$/);
     assert.equal(nuevo.datos.envio_ciudad, 'Getafe');
-    assert.ok(emails().some((e) => e.para === 'mkt@test' && e.asunto.includes(nuevo.datos.codigo)));
+    assert.ok((await emails()).some((e) => e.para === 'mkt@test' && e.asunto.includes(nuevo.datos.codigo)));
 
     // otro maker no lo ve
     const otro = await entrar('paula@ejemplo.com');
@@ -77,7 +80,7 @@ describe('flujo de pedido', () => {
 
     const lanzado = await api(`/pedidos/${nuevo.datos.id}/lanzar`, { token: mkt, metodo: 'POST' });
     assert.equal(lanzado.datos.estado, 'en_almacen');
-    assert.ok(emails().some((e) => e.para === 'almacen@test, mkt@test' && e.asunto.startsWith(`Preparar pedido ${nuevo.datos.codigo}`)));
+    assert.ok((await emails()).some((e) => e.para === 'almacen@test, mkt@test' && e.asunto.startsWith(`Preparar pedido ${nuevo.datos.codigo}`)));
 
     assert.equal((await api(`/pedidos/${nuevo.datos.id}/lanzar`, { token: mkt, metodo: 'POST' })).status, 409);
 
@@ -87,7 +90,7 @@ describe('flujo de pedido', () => {
       enviado.datos.historial.map((h) => h.estado),
       ['pendiente', 'aprobado', 'en_almacen', 'enviado'],
     );
-    assert.ok(emails().some((e) => e.para === 'joel@ejemplo.com' && e.asunto.includes('de camino')));
+    assert.ok((await emails()).some((e) => e.para === 'joel@ejemplo.com' && e.asunto.includes('de camino')));
   });
 
   test('rechazo con motivo obligatorio', async () => {

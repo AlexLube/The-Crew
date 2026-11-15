@@ -19,33 +19,31 @@ export function comprobarPassword(password, guardado) {
 
 const sha256 = (t) => createHash('sha256').update(t).digest('hex');
 
-export function crearSesion(db, usuarioId) {
+export async function crearSesion(db, usuarioId) {
   const token = randomBytes(32).toString('base64url');
   const expira = new Date(Date.now() + DIAS_SESION * 864e5).toISOString();
-  db.prepare('INSERT INTO sesiones (token_hash, usuario_id, expira_at) VALUES (?, ?, ?)').run(sha256(token), usuarioId, expira);
+  await db.query('INSERT INTO sesiones (token_hash, usuario_id, expira_at) VALUES ($1, $2, $3)', [sha256(token), usuarioId, expira]);
   return token;
 }
 
-export function cerrarSesion(db, token) {
-  db.prepare('DELETE FROM sesiones WHERE token_hash = ?').run(sha256(token));
+export async function cerrarSesion(db, token) {
+  await db.query('DELETE FROM sesiones WHERE token_hash = $1', [sha256(token)]);
 }
 
-export function usuarioDeToken(db, token) {
+export async function usuarioDeToken(db, token) {
   if (!token) return null;
-  const fila = db
-    .prepare(
-      `SELECT u.* FROM sesiones s JOIN usuarios u ON u.id = s.usuario_id
-       WHERE s.token_hash = ? AND s.expira_at > ? AND u.activo = 1`,
-    )
-    .get(sha256(token), new Date().toISOString());
-  return fila ?? null;
+  return db.uno(
+    `SELECT u.* FROM sesiones s JOIN usuarios u ON u.id = s.usuario_id
+     WHERE s.token_hash = $1 AND s.expira_at > now() AND u.activo`,
+    [sha256(token)],
+  );
 }
 
 /** Middleware: exige sesión y, opcionalmente, uno de los roles indicados. */
 export function requiere(db, ...roles) {
-  return (req, res, next) => {
+  return async (req, res, next) => {
     const token = req.get('authorization')?.replace(/^Bearer\s+/i, '');
-    const usuario = usuarioDeToken(db, token);
+    const usuario = await usuarioDeToken(db, token);
     if (!usuario) return res.status(401).json({ error: 'Inicia sesión para continuar.' });
     if (roles.length && !roles.includes(usuario.rol)) {
       return res.status(403).json({ error: 'No tienes permiso para hacer esto.' });

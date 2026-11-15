@@ -4,16 +4,21 @@
   "private": true,
   "description": "API de The Crew: usuarios, catálogo y pedidos con aprobación de marketing",
   "type": "module",
-  "engines": { "node": ">=22.13" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
-    "start": "node --disable-warning=ExperimentalWarning src/index.js",
-    "dev": "node --disable-warning=ExperimentalWarning --watch src/index.js",
-    "seed": "node --disable-warning=ExperimentalWarning src/seed.js",
-    "test": "node --disable-warning=ExperimentalWarning --test test/*.test.js"
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "seed": "node src/sembrar-cli.js",
+    "test": "node --test test/*.test.js"
   },
   "dependencies": {
+    "@electric-sql/pglite": "^0.5.16",
     "cors": "^2.8.6",
     "express": "^5.3.0",
-    "nodemailer": "^10.5.0"
+    "nodemailer": "^10.5.0",
+    "pg": "^8.23.1",
+    "serverless-http": "^4.0.0"
   }
 }
